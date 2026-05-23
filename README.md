@@ -1,21 +1,34 @@
-# HamStudy
+# 🐹 햄스터디 (HamStudy)
 
-HamStudy is a cute character study timer app planned for iOS and Android.
+**햄스터디(HamStudy)**는 귀여운 햄스터 캐릭터와 함께하는 스마트한 공부 타이머 앱입니다.
+파스텔톤 컬러와 부드러운 라운드 UI로 시각적인 편안함을 제공하며, 타이머의 상태(공부, 휴식, 딴짓 등)에 따라 실시간으로 변화하는 볼 빵빵한 햄스터 캐릭터가 여러분의 든든한 공부 메이트가 되어 드립니다!
 
-The current scaffold follows `HamStudy.md` and starts with a Flutter app shell,
-feature-first folders, Riverpod state management, local timer logic, and clear
-slots for Firebase sync, purchases, statistics, D-Day, and home screen widgets.
+---
 
-## Setup
+## ✨ 주요 기능
 
-Install Flutter, then run:
+- **📚 과목별 맞춤 타이머 & 통계**
+  - 과목별 고유 색상 및 이름 지정 가능
+  - 순 공부 시간(Net Time)을 정확히 측정하고, 일간 통계 데이터를 시각적으로 제공
+- **⏳ 세분화된 일시정지 및 귀여운 캐릭터 인터랙션**
+  - 타이머 일시정지 시 사유(커피 타임, 화장실, 딴짓, 휴식 등) 선택 가능
+  - 사유에 맞춰 햄스터 캐릭터의 이모지와 애니메이션, 파티클 효과가 즉시 변경
+- **📅 시험별 디데이 (D-Day)**
+  - 중요한 시험이나 목표 날짜를 등록하고 남은 기간을 상시 카운트다운
+- **📱 홈 화면 위젯 및 라이브 액티비티 (iOS)**
+  - 잠금 화면과 다이내믹 아일랜드에서 실시간으로 타이머 현황 파악 가능
+
+## 🛠 기술 스택
+
+- **Frontend:** Flutter (iOS / Android 단일 코드베이스)
+- **State Management:** Riverpod
+- **Storage & DB:** SharedPreferences (Local Storage)
+
+## 🚀 설치 및 실행 방법 (Setup)
+
+Flutter SDK 환경이 구성되어 있다면, 아래 명령어를 통해 프로젝트를 실행할 수 있습니다.
 
 ```sh
-flutter create --platforms=ios,android .
 flutter pub get
 flutter run
 ```
-
-`flutter create` is only needed because the Flutter SDK was not available when
-this scaffold was created, so native iOS/Android runner files could not be
-generated automatically.
