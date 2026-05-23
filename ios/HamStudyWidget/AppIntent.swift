@@ -1,0 +1,18 @@
+//
+//  AppIntent.swift
+//  HamStudyWidget
+//
+//  Created by 김다솜 on 5/23/26.
+//
+
+import WidgetKit
+import AppIntents
+
+struct ConfigurationAppIntent: WidgetConfigurationIntent {
+    static var title: LocalizedStringResource { "Configuration" }
+    static var description: IntentDescription { "This is an example widget." }
+
+    // An example configurable parameter.
+    @Parameter(title: "Favorite Emoji", default: "😃")
+    var favoriteEmoji: String
+}
