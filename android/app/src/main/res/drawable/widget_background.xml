@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<shape xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 앱 테마와 어울리는 파스텔 배경색 -->
+    <solid android:color="#FFF9F2" />
+    <corners android:radius="16dp" />
+</shape>

@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:live_activities/live_activities.dart';
+import 'package:home_widget/home_widget.dart';
 
 import '../../../app/study_provider.dart';
 
@@ -60,24 +61,49 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
     ).animate(CurvedAnimation(
       parent: _breatheController,
       curve: Curves.easeInOutSine,
-    ));
+    ),);
 
     _hController =
         FixedExtentScrollController(initialItem: _countdownSeconds ~/ 3600);
     _mController = FixedExtentScrollController(
-        initialItem: (_countdownSeconds % 3600) ~/ 60);
+        initialItem: (_countdownSeconds % 3600) ~/ 60,);
     _sController =
         FixedExtentScrollController(initialItem: _countdownSeconds % 60);
 
     _restoreState(); // 앱 시작 시 강제 종료 전 상태 복구
     _initNotifications();
     _initLiveActivities();
+    _initHomeWidget();
   }
 
   void _initLiveActivities() {
     if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
       _liveActivitiesPlugin.init(appGroupId: 'group.hamstudy');
     }
+  }
+
+  // 홈 위젯을 위한 앱 그룹 초기화
+  void _initHomeWidget() {
+    HomeWidget.setAppGroupId('group.hamstudy');
+  }
+
+  // 홈 위젯에 현재 상태를 전달하고 업데이트를 요청하는 함수
+  Future<void> _updateHomeWidget() async {
+    final subjects = ref.read(subjectsProvider);
+    final activeId = _getActiveId(subjects);
+    final currentSubject = subjects.firstWhere((e) => e.id == activeId);
+
+    await HomeWidget.saveWidgetData<String>('widget_subjectName', currentSubject.name);
+    await HomeWidget.saveWidgetData<String>('widget_totalTime', currentSubject.netSeconds.toTimeFormat());
+    
+    // 안드로이드 위젯 색상 변경을 위해 Color 값을 HEX 스트링(#AARRGGBB)으로 변환하여 전달
+    final colorHex = '#${currentSubject.color.value.toRadixString(16).padLeft(8, '0')}';
+    await HomeWidget.saveWidgetData<String>('widget_subjectColor', colorHex);
+
+    await HomeWidget.updateWidget(
+      name: 'HamStudyWidgetProvider', // Android Provider 클래스명
+      iOSName: 'HamStudyHomeWidget',
+    );
   }
 
   Future<void> _initNotifications() async {
@@ -134,6 +160,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
       usesChronometer: true,
       chronometerCountDown: countDown,
       when: when,
+      color: currentSubject.color, // 현재 과목의 색상을 알림 UI에 반영
     );
     final NotificationDetails platformDetails =
         NotificationDetails(android: androidDetails);
@@ -195,7 +222,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
       });
       if (wasStudying) {
         _breatheController.animateTo(0,
-            duration: const Duration(milliseconds: 300), curve: Curves.easeOut);
+            duration: const Duration(milliseconds: 300), curve: Curves.easeOut,);
       }
       _startPeriodicTimer();
     }
@@ -271,8 +298,9 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
             });
           }
         }
-        if (_isStudying || _isCountdownRunning)
+        if (_isStudying || _isCountdownRunning) {
           _startPeriodicTimer(); // 화면에 돌아왔으므로 타이머 재시작
+        }
       }
       _backgroundTime = null;
 
@@ -390,6 +418,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
       _timer = null;
     }
     _updateNotification(true);
+    _updateHomeWidget(); // 정지 시 위젯 업데이트
   }
 
   void _pauseTimer(String reason) {
@@ -406,6 +435,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
     _updateNotification(false);
     _stopLiveActivity();
     ref.read(subjectsProvider.notifier).saveCurrentState(); // 일시정지 시 DB 저장
+    _updateHomeWidget(); // 일시정지 시 위젯 업데이트
   }
 
   void _startTimer() {
@@ -431,7 +461,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
     if (!_isTimerMode) {
       _breatheController.animateTo(0,
           duration: const Duration(milliseconds: 300),
-          curve: Curves.easeOut); // 공부 시작 시 원래 위치로 부드럽게 복귀
+          curve: Curves.easeOut,); // 공부 시작 시 원래 위치로 부드럽게 복귀
     }
 
     _startPeriodicTimer();
@@ -487,7 +517,9 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
   Future<void> _stopLiveActivity() async {
     if (kIsWeb ||
         defaultTargetPlatform != TargetPlatform.iOS ||
-        _activityId == null) return;
+        _activityId == null) {
+      return;
+    }
     await _liveActivitiesPlugin.endActivity(_activityId!);
     _activityId = null;
   }
@@ -530,7 +562,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                     padding: EdgeInsets.all(16),
                     child: Text('과목 선택',
                         style: TextStyle(
-                            fontWeight: FontWeight.bold, fontSize: 16)),
+                            fontWeight: FontWeight.bold, fontSize: 16,),),
                   ),
                   Flexible(
                     child: ReorderableListView(
@@ -548,11 +580,11 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                             backgroundColor:
                                 subject.color.withValues(alpha: 0.2),
                             child: Icon(Icons.circle,
-                                color: subject.color, size: 16),
+                                color: subject.color, size: 16,),
                           ),
                           title: Text(subject.name,
                               style:
-                                  const TextStyle(fontWeight: FontWeight.bold)),
+                                  const TextStyle(fontWeight: FontWeight.bold),),
                           trailing: Row(
                             mainAxisSize: MainAxisSize.min,
                             children: [
@@ -560,11 +592,11 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                                 Icon(Icons.check,
                                     color: isDarkMode
                                         ? Colors.white
-                                        : Colors.black87),
+                                        : Colors.black87,),
                               if (isActive) const SizedBox(width: 8),
                               IconButton(
                                 icon: const Icon(Icons.edit,
-                                    size: 20, color: Colors.grey),
+                                    size: 20, color: Colors.grey,),
                                 onPressed: () => _showSubjectDialog(subject),
                               ),
                             ],
@@ -584,7 +616,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                     leading: const Icon(Icons.add, color: Colors.grey),
                     title: const Text('새 과목 추가하기',
                         style: TextStyle(
-                            fontWeight: FontWeight.bold, color: Colors.grey)),
+                            fontWeight: FontWeight.bold, color: Colors.grey,),),
                     onTap: () => _showSubjectDialog(null),
                   ),
                 ],
@@ -623,7 +655,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
       context: context,
       backgroundColor: Theme.of(context).cardColor,
       shape: const RoundedRectangleBorder(
-          borderRadius: BorderRadius.vertical(top: Radius.circular(20))),
+          borderRadius: BorderRadius.vertical(top: Radius.circular(20)),),
       builder: (context) {
         return SafeArea(
           child: Consumer(
@@ -636,7 +668,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                       padding: EdgeInsets.all(16),
                       child: Text('타이머 선택',
                           style: TextStyle(
-                              fontWeight: FontWeight.bold, fontSize: 16))),
+                              fontWeight: FontWeight.bold, fontSize: 16,),),),
                   Flexible(
                     child: ReorderableListView(
                       shrinkWrap: true,
@@ -649,20 +681,20 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                           .map((timer) => ListTile(
                                 key: ValueKey(timer.id),
                                 leading: const Icon(Icons.bookmark,
-                                    color: Colors.amber),
+                                    color: Colors.amber,),
                                 title: Text(timer.title,
                                     style: const TextStyle(
-                                        fontWeight: FontWeight.bold)),
+                                        fontWeight: FontWeight.bold,),),
                                 trailing: Row(
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Text(timer.seconds.toTimeFormat(),
                                         style: const TextStyle(
                                             fontSize: 16,
-                                            fontWeight: FontWeight.bold)),
+                                            fontWeight: FontWeight.bold,),),
                                     IconButton(
                                       icon: const Icon(Icons.edit,
-                                          size: 20, color: Colors.grey),
+                                          size: 20, color: Colors.grey,),
                                       onPressed: () {
                                         _showTimerEditDialog(timer: timer);
                                       },
@@ -676,7 +708,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                                   _setCountdown(timer.seconds);
                                   Navigator.pop(context);
                                 },
-                              ))
+                              ),)
                           .toList(),
                     ),
                   ),
@@ -685,7 +717,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                     leading: const Icon(Icons.add, color: Colors.grey),
                     title: const Text('새 즐겨찾기 타이머 추가',
                         style: TextStyle(
-                            fontWeight: FontWeight.bold, color: Colors.grey)),
+                            fontWeight: FontWeight.bold, color: Colors.grey,),),
                     onTap: () {
                       _showTimerEditDialog();
                     },
@@ -702,11 +734,11 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
   Future<void> _showTimerEditDialog({SavedTimer? timer}) async {
     final titleController = TextEditingController(text: timer?.title ?? '');
     final hController = TextEditingController(
-        text: timer != null ? (timer.seconds ~/ 3600).toString() : '0');
+        text: timer != null ? (timer.seconds ~/ 3600).toString() : '0',);
     final mController = TextEditingController(
-        text: timer != null ? ((timer.seconds % 3600) ~/ 60).toString() : '0');
+        text: timer != null ? ((timer.seconds % 3600) ~/ 60).toString() : '0',);
     final sController = TextEditingController(
-        text: timer != null ? (timer.seconds % 60).toString() : '0');
+        text: timer != null ? (timer.seconds % 60).toString() : '0',);
 
     final result = await showDialog<Map<String, dynamic>>(
       context: context,
@@ -714,14 +746,14 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
         return AlertDialog(
           backgroundColor: Theme.of(context).cardColor,
           title: Text(timer == null ? '타이머 추가' : '타이머 수정',
-              style: const TextStyle(fontWeight: FontWeight.bold)),
+              style: const TextStyle(fontWeight: FontWeight.bold),),
           content: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
               TextField(
                   controller: titleController,
                   decoration:
-                      const InputDecoration(labelText: '타이머 이름 (예: 모의고사)')),
+                      const InputDecoration(labelText: '타이머 이름 (예: 모의고사)'),),
               const SizedBox(height: 16),
               Row(
                 children: [
@@ -729,21 +761,21 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                     child: TextField(
                         controller: hController,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: '시')),
+                        decoration: const InputDecoration(labelText: '시'),),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: TextField(
                         controller: mController,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: '분')),
+                        decoration: const InputDecoration(labelText: '분'),),
                   ),
                   const SizedBox(width: 8),
                   Expanded(
                     child: TextField(
                         controller: sController,
                         keyboardType: TextInputType.number,
-                        decoration: const InputDecoration(labelText: '초')),
+                        decoration: const InputDecoration(labelText: '초'),),
                   ),
                 ],
               ),
@@ -758,10 +790,10 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                         .deleteTimer(timer.id);
                     Navigator.pop(context);
                   },
-                  child: const Text('삭제', style: TextStyle(color: Colors.red))),
+                  child: const Text('삭제', style: TextStyle(color: Colors.red)),),
             TextButton(
                 onPressed: () => Navigator.pop(context),
-                child: const Text('취소')),
+                child: const Text('취소'),),
             FilledButton(
                 onPressed: () {
                   final h = int.tryParse(hController.text) ?? 0;
@@ -772,7 +804,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                   if (seconds > 12 * 3600) {
                     ScaffoldMessenger.of(context).showSnackBar(
                       const SnackBar(
-                          content: Text('타이머는 최대 12시간까지만 설정할 수 있습니다.')),
+                          content: Text('타이머는 최대 12시간까지만 설정할 수 있습니다.'),),
                     );
                     return;
                   }
@@ -785,9 +817,9 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                   }
 
                   Navigator.pop(context,
-                      {'title': titleController.text, 'seconds': seconds});
+                      {'title': titleController.text, 'seconds': seconds},);
                 },
-                child: const Text('확인')),
+                child: const Text('확인'),),
           ],
         );
       },
@@ -820,9 +852,9 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
               (val) => setState(() {
                     _countdownSeconds = val * 3600 + (_countdownSeconds % 3600);
                     _isCountdownPaused = false;
-                  })),
+                  }),),
           const Text(':',
-              style: TextStyle(fontSize: 60, fontWeight: FontWeight.w900)),
+              style: TextStyle(fontSize: 60, fontWeight: FontWeight.w900),),
           _buildTimeWheel(
               60,
               _mController,
@@ -831,16 +863,16 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                         val * 60 +
                         (_countdownSeconds % 60);
                     _isCountdownPaused = false;
-                  })),
+                  }),),
           const Text(':',
-              style: TextStyle(fontSize: 60, fontWeight: FontWeight.w900)),
+              style: TextStyle(fontSize: 60, fontWeight: FontWeight.w900),),
           _buildTimeWheel(
               60,
               _sController,
               (val) => setState(() {
                     _countdownSeconds = (_countdownSeconds ~/ 60) * 60 + val;
                     _isCountdownPaused = false;
-                  })),
+                  }),),
         ],
       ),
     );
@@ -855,7 +887,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
           dragDevices: {
             PointerDeviceKind.touch,
             PointerDeviceKind.mouse,
-            PointerDeviceKind.trackpad
+            PointerDeviceKind.trackpad,
           },
         ),
         child: ListWheelScrollView.useDelegate(
@@ -891,22 +923,22 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           _buildStaticTimeWheel(
-              (_countdownSeconds ~/ 3600).toString().padLeft(2, '0')),
+              (_countdownSeconds ~/ 3600).toString().padLeft(2, '0'),),
           const Text(':',
-              style: TextStyle(fontSize: 60, fontWeight: FontWeight.w900)),
+              style: TextStyle(fontSize: 60, fontWeight: FontWeight.w900),),
           _buildStaticTimeWheel(
-              ((_countdownSeconds % 3600) ~/ 60).toString().padLeft(2, '0')),
+              ((_countdownSeconds % 3600) ~/ 60).toString().padLeft(2, '0'),),
           const Text(':',
-              style: TextStyle(fontSize: 60, fontWeight: FontWeight.w900)),
+              style: TextStyle(fontSize: 60, fontWeight: FontWeight.w900),),
           _buildStaticTimeWheel(
-              (_countdownSeconds % 60).toString().padLeft(2, '0')),
+              (_countdownSeconds % 60).toString().padLeft(2, '0'),),
         ],
       ),
     );
   }
 
   Widget _buildTimeWheel(int max, FixedExtentScrollController controller,
-      ValueChanged<int> onChanged) {
+      ValueChanged<int> onChanged,) {
     return SizedBox(
       width: 90,
       child: ScrollConfiguration(
@@ -914,7 +946,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
           dragDevices: {
             PointerDeviceKind.touch,
             PointerDeviceKind.mouse,
-            PointerDeviceKind.trackpad
+            PointerDeviceKind.trackpad,
           },
         ),
         child: ListWheelScrollView.useDelegate(
@@ -975,7 +1007,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                 icon: const Icon(Icons.add),
                 label: const Text('새 과목 추가하기',
                     style:
-                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                        TextStyle(fontSize: 16, fontWeight: FontWeight.bold),),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.deepOrange,
                   foregroundColor: Colors.white,
@@ -994,9 +1026,9 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
 
     // 2. 화면 전체 렌더링에 필요한 '색상'과 '이름'만 선택적 구독 (시간이 흘러도 재빌드 무시됨)
     final subjectColor = ref.watch(subjectsProvider
-        .select((s) => s.firstWhere((e) => e.id == _getActiveId(s)).color));
+        .select((s) => s.firstWhere((e) => e.id == _getActiveId(s)).color),);
     final subjectName = ref.watch(subjectsProvider
-        .select((s) => s.firstWhere((e) => e.id == _getActiveId(s)).name));
+        .select((s) => s.firstWhere((e) => e.id == _getActiveId(s)).name),);
 
     return Scaffold(
       backgroundColor: isDarkMode ? null : const Color(0xFFFFF9F2),
@@ -1030,7 +1062,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                                   _updateNotification(true);
                                 }
                               },
-                              activeColor: Colors.deepOrange,
+                              activeThumbColor: Colors.deepOrange,
                             ),
                             const SizedBox(width: 8),
                             if (_isTimerMode)
@@ -1043,13 +1075,13 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
 
                                   return Container(
                                     padding: const EdgeInsets.symmetric(
-                                        horizontal: 4, vertical: 4),
+                                        horizontal: 4, vertical: 4,),
                                     child: Row(
                                       mainAxisSize: MainAxisSize.min,
                                       children: [
                                         Icon(Icons.circle,
                                             color: currentSubject.color,
-                                            size: 8),
+                                            size: 8,),
                                         const SizedBox(width: 6),
                                         Flexible(
                                           child: Text(
@@ -1057,14 +1089,14 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                                             style: TextStyle(
                                                 fontSize: 12,
                                                 fontWeight: FontWeight.bold,
-                                                color: currentSubject.color),
+                                                color: currentSubject.color,),
                                             overflow: TextOverflow.ellipsis,
                                           ),
                                         ),
                                         const SizedBox(width: 8),
                                         Container(
                                           padding: const EdgeInsets.symmetric(
-                                              horizontal: 6, vertical: 4),
+                                              horizontal: 6, vertical: 4,),
                                           decoration: BoxDecoration(
                                             color: currentSubject.color
                                                 .withValues(alpha: 0.1),
@@ -1081,7 +1113,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                                                   ? Colors.white
                                                   : Colors.black87,
                                               fontFeatures: const [
-                                                FontFeature.tabularFigures()
+                                                FontFeature.tabularFigures(),
                                               ],
                                             ),
                                           ),
@@ -1094,7 +1126,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                             else if (_countdownSeconds > 0)
                               Container(
                                 padding: const EdgeInsets.symmetric(
-                                    horizontal: 8, vertical: 4),
+                                    horizontal: 8, vertical: 4,),
                                 decoration: BoxDecoration(
                                   color: Colors.orange.withValues(alpha: 0.1),
                                   borderRadius: BorderRadius.circular(6),
@@ -1121,7 +1153,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                                             ? Colors.orangeAccent
                                             : Colors.deepOrange,
                                         fontFeatures: const [
-                                          FontFeature.tabularFigures()
+                                          FontFeature.tabularFigures(),
                                         ],
                                       ),
                                     ),
@@ -1143,9 +1175,9 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
 
                       return Container(
                         margin: const EdgeInsets.only(
-                            top: 10, bottom: 10, left: 10),
+                            top: 10, bottom: 10, left: 10,),
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8),
+                            horizontal: 12, vertical: 8,),
                         decoration: BoxDecoration(
                           color: Theme.of(context)
                               .cardColor
@@ -1159,7 +1191,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                             final today =
                                 DateTime(now.year, now.month, now.day);
                             final targetDate = DateTime(
-                                dday.date.year, dday.date.month, dday.date.day);
+                                dday.date.year, dday.date.month, dday.date.day,);
                             final diff = targetDate.difference(today).inDays;
 
                             String ddayText = '';
@@ -1182,13 +1214,13 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                                           fontWeight: FontWeight.bold,
                                           color: isDarkMode
                                               ? Colors.white
-                                              : Colors.black87)),
+                                              : Colors.black87,),),
                                   const SizedBox(width: 8),
                                   Text(ddayText,
                                       style: const TextStyle(
                                           fontSize: 14,
                                           fontWeight: FontWeight.w900,
-                                          color: Colors.deepOrange)),
+                                          color: Colors.deepOrange,),),
                                 ],
                               ),
                             );
@@ -1235,7 +1267,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                                                     .withValues(alpha: 0.1))
                                             : (_isStudying
                                                 ? subjectColor.withValues(
-                                                    alpha: 0.15)
+                                                    alpha: 0.15,)
                                                 : Colors.grey
                                                     .withValues(alpha: 0.1)),
                                         blurRadius: 40,
@@ -1270,7 +1302,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                                 onTap: _showSubjectSelector, // 공부 중에도 전환 가능
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
-                                      horizontal: 16, vertical: 8),
+                                      horizontal: 16, vertical: 8,),
                                   decoration: BoxDecoration(
                                     color: subjectColor.withValues(alpha: 0.1),
                                     borderRadius: BorderRadius.circular(20),
@@ -1279,7 +1311,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                                     mainAxisSize: MainAxisSize.min,
                                     children: [
                                       Icon(Icons.circle,
-                                          color: subjectColor, size: 12),
+                                          color: subjectColor, size: 12,),
                                       const SizedBox(width: 8),
                                       Text(
                                         subjectName,
@@ -1291,7 +1323,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                                       ),
                                       const SizedBox(width: 4),
                                       Icon(Icons.keyboard_arrow_down,
-                                          color: subjectColor, size: 16),
+                                          color: subjectColor, size: 16,),
                                     ],
                                   ),
                                 ),
@@ -1308,8 +1340,8 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                               final netSeconds = ref.watch(
                                   subjectsProvider.select((s) => s
                                       .firstWhere(
-                                          (e) => e.id == _getActiveId(s))
-                                      .netSeconds));
+                                          (e) => e.id == _getActiveId(s),)
+                                      .netSeconds,),);
                               return FittedBox(
                                 fit: BoxFit.scaleDown,
                                 child: _isTimerMode
@@ -1327,7 +1359,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                                               child: const Icon(
                                                   Icons.arrow_drop_down_circle,
                                                   color: Colors.grey,
-                                                  size: 32),
+                                                  size: 32,),
                                             ),
                                           ],
                                         ],
@@ -1338,7 +1370,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                                           fontSize: 80,
                                           fontWeight: FontWeight.w900,
                                           fontFeatures: [
-                                            FontFeature.tabularFigures()
+                                            FontFeature.tabularFigures(),
                                           ],
                                         ),
                                       ),
@@ -1370,7 +1402,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                                               foregroundColor: Colors.white,
                                               padding:
                                                   const EdgeInsets.symmetric(
-                                                      vertical: 20),
+                                                      vertical: 20,),
                                               shape: RoundedRectangleBorder(
                                                 borderRadius:
                                                     BorderRadius.circular(24),
@@ -1398,7 +1430,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                                                 foregroundColor: Colors.white,
                                                 padding:
                                                     const EdgeInsets.symmetric(
-                                                        vertical: 20),
+                                                        vertical: 20,),
                                                 shape: RoundedRectangleBorder(
                                                   borderRadius:
                                                       BorderRadius.circular(24),
@@ -1422,19 +1454,19 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                                             MainAxisAlignment.center,
                                         children: [
                                           _buildPauseButton(
-                                              '밥', '🍚', Colors.orange),
+                                              '밥', '🍚', Colors.orange,),
                                           const SizedBox(width: 16),
                                           _buildPauseButton(
-                                              '커피', '☕️', Colors.brown),
+                                              '커피', '☕️', Colors.brown,),
                                           const SizedBox(width: 16),
                                           _buildPauseButton(
-                                              '화장실', '🧻', Colors.blueGrey),
+                                              '화장실', '🧻', Colors.blueGrey,),
                                           const SizedBox(width: 16),
                                           _buildPauseButton(
-                                              '딴짓', '📱', Colors.purple),
+                                              '딴짓', '📱', Colors.purple,),
                                           const SizedBox(width: 16),
                                           _buildPauseButton(
-                                              '휴식', '💤', Colors.indigo),
+                                              '휴식', '💤', Colors.indigo,),
                                         ],
                                       )
                                     : SizedBox(
@@ -1445,7 +1477,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                                             backgroundColor: subjectColor,
                                             foregroundColor: Colors.white,
                                             padding: const EdgeInsets.symmetric(
-                                                vertical: 20),
+                                                vertical: 20,),
                                             shape: RoundedRectangleBorder(
                                               borderRadius:
                                                   BorderRadius.circular(24),
@@ -1456,7 +1488,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                                             '공부 시작하기',
                                             style: TextStyle(
                                                 fontSize: 24,
-                                                fontWeight: FontWeight.bold),
+                                                fontWeight: FontWeight.bold,),
                                           ),
                                         ),
                                       )),
@@ -1559,7 +1591,7 @@ class _SubjectEditDialogState extends State<_SubjectEditDialog> {
     return AlertDialog(
       backgroundColor: Theme.of(context).cardColor,
       title: Text(widget.subject == null ? '과목 추가' : '과목 수정',
-          style: const TextStyle(fontWeight: FontWeight.bold)),
+          style: const TextStyle(fontWeight: FontWeight.bold),),
       content: SingleChildScrollView(
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -1596,7 +1628,7 @@ class _SubjectEditDialogState extends State<_SubjectEditDialog> {
                   actions: [
                     TextButton(
                         onPressed: () => Navigator.pop(ctx),
-                        child: const Text('취소')),
+                        child: const Text('취소'),),
                     Consumer(builder: (context, ref, child) {
                       return TextButton(
                         onPressed: () {
@@ -1607,9 +1639,9 @@ class _SubjectEditDialogState extends State<_SubjectEditDialog> {
                           Navigator.pop(context);
                         },
                         child: const Text('삭제',
-                            style: TextStyle(color: Colors.red)),
+                            style: TextStyle(color: Colors.red),),
                       );
-                    }),
+                    },),
                   ],
                 ),
               );
@@ -1617,12 +1649,12 @@ class _SubjectEditDialogState extends State<_SubjectEditDialog> {
             child: const Text('삭제', style: TextStyle(color: Colors.red)),
           ),
         TextButton(
-            onPressed: () => Navigator.pop(context), child: const Text('취소')),
+            onPressed: () => Navigator.pop(context), child: const Text('취소'),),
         FilledButton(
           onPressed: () {
             if (_nameController.text.trim().isEmpty) return;
             Navigator.pop(context,
-                {'name': _nameController.text.trim(), 'color': _selectedColor});
+                {'name': _nameController.text.trim(), 'color': _selectedColor},);
           },
           child: const Text('저장'),
         ),
@@ -1637,7 +1669,7 @@ class _SimpleColorPicker extends StatefulWidget {
   final ValueChanged<Color> onColorChanged;
 
   const _SimpleColorPicker(
-      {required this.initialColor, required this.onColorChanged});
+      {required this.initialColor, required this.onColorChanged,});
 
   @override
   State<_SimpleColorPicker> createState() => _SimpleColorPickerState();
@@ -1677,7 +1709,7 @@ class _SimpleColorPickerState extends State<_SimpleColorPicker> {
                 color: Colors.black.withValues(alpha: 0.1),
                 blurRadius: 4,
                 offset: const Offset(0, 2),
-              )
+              ),
             ],
           ),
           child: Center(
@@ -1685,7 +1717,7 @@ class _SimpleColorPickerState extends State<_SimpleColorPicker> {
                 style: TextStyle(
                     color: textColor,
                     fontWeight: FontWeight.bold,
-                    fontSize: 16)),
+                    fontSize: 16,),),
           ),
         ),
         const SizedBox(height: 16),
@@ -1707,7 +1739,7 @@ class _SimpleColorPickerState extends State<_SimpleColorPicker> {
           onChanged: (v) {
             setState(() => _hue = v);
             widget.onColorChanged(
-                HSVColor.fromAHSV(1.0, _hue, _saturation, _value).toColor());
+                HSVColor.fromAHSV(1.0, _hue, _saturation, _value).toColor(),);
           },
         ),
         const SizedBox(height: 12),
@@ -1724,7 +1756,7 @@ class _SimpleColorPickerState extends State<_SimpleColorPicker> {
           onChanged: (v) {
             setState(() => _saturation = v);
             widget.onColorChanged(
-                HSVColor.fromAHSV(1.0, _hue, _saturation, _value).toColor());
+                HSVColor.fromAHSV(1.0, _hue, _saturation, _value).toColor(),);
           },
         ),
         const SizedBox(height: 12),
@@ -1741,7 +1773,7 @@ class _SimpleColorPickerState extends State<_SimpleColorPicker> {
           onChanged: (v) {
             setState(() => _value = v);
             widget.onColorChanged(
-                HSVColor.fromAHSV(1.0, _hue, _saturation, _value).toColor());
+                HSVColor.fromAHSV(1.0, _hue, _saturation, _value).toColor(),);
           },
         ),
       ],
@@ -1753,7 +1785,7 @@ class _SimpleColorPickerState extends State<_SimpleColorPicker> {
       required double min,
       required double max,
       required Gradient gradient,
-      required ValueChanged<double> onChanged}) {
+      required ValueChanged<double> onChanged,}) {
     return Container(
       height: 36,
       decoration: BoxDecoration(
@@ -1769,13 +1801,4 @@ class _SimpleColorPickerState extends State<_SimpleColorPicker> {
           trackHeight: 36,
           thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 14),
         ),
-        child: Slider(
-          value: value,
-          min: min,
-          max: max,
-          onChanged: onChanged,
-        ),
-      ),
-    );
-  }
-}
+        child: Slider
