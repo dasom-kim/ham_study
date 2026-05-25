@@ -488,3 +488,39 @@ class DarkModeNotifier extends Notifier<bool> {
 
 final isDarkModeProvider =
     NotifierProvider<DarkModeNotifier, bool>(DarkModeNotifier.new);
+
+// ─── CloudSync ────────────────────────────────────────────────────────────────
+
+class CloudSyncNotifier extends Notifier<bool> {
+  @override
+  bool build() => false; // false = 동기화 중 아님
+
+  /// 현재 메모리 상태를 Firestore에 강제 저장 (백업)
+  Future<void> backupToCloud() async {
+    state = true;
+    try {
+      await ref.read(subjectsProvider.notifier).saveCurrentState();
+    } finally {
+      state = false;
+    }
+  }
+
+  /// Firestore에서 최신 데이터를 불러와 로컬 상태 갱신 (복원)
+  Future<void> restoreFromCloud() async {
+    state = true;
+    try {
+      // 각 notifier의 build()가 _load()를 호출하므로 invalidate로 재로드
+      ref.invalidate(subjectsProvider);
+      ref.invalidate(dailyStatsProvider);
+      ref.invalidate(ddaysProvider);
+      ref.invalidate(savedTimersProvider);
+      // 로드가 완료될 때까지 잠시 대기
+      await Future.delayed(const Duration(seconds: 1));
+    } finally {
+      state = false;
+    }
+  }
+}
+
+final cloudSyncProvider =
+    NotifierProvider<CloudSyncNotifier, bool>(CloudSyncNotifier.new);
