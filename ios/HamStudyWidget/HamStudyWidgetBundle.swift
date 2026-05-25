@@ -11,8 +11,8 @@ import SwiftUI
 @main
 struct HamStudyWidgetBundle: WidgetBundle {
     var body: some Widget {
-        HamStudyWidget()
-        HamStudyWidgetControl()
+        HamStudyWidget()          // 공부시간 위젯
+        HamStudyDdayWidget()      // 디데이 위젯
         HamStudyWidgetLiveActivity()
     }
 }

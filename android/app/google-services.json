@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "994193975375",
+    "project_id": "hamstudy-620da",
+    "storage_bucket": "hamstudy-620da.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:994193975375:android:d93278f6cb17e85b73223a",
+        "android_client_info": {
+          "package_name": "com.hamstudy.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAhAlwPiZIMtFzej6G2imaJxFMaCX-NMiw"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

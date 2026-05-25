@@ -18,7 +18,7 @@ class DdayScreen extends ConsumerWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text('📅🐹', style: TextStyle(fontSize: 80)),
+              Image.asset('assets/images/ham_pure.png', width: 120, height: 120),
               const SizedBox(height: 24),
               const Text(
                 '아직 등록된 디데이가 없어요!',

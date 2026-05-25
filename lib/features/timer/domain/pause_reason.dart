@@ -15,12 +15,12 @@ extension PauseReasonLabel on PauseReason {
     };
   }
 
-  String get icon {
+  String get imagePath {
     return switch (this) {
-      PauseReason.coffee => '☕',
-      PauseReason.restroom => '🧻',
-      PauseReason.distraction => '📱',
-      PauseReason.rest => '💤',
+      PauseReason.coffee => 'assets/images/ham_coffee.png',
+      PauseReason.restroom => 'assets/images/ham_toilet.png',
+      PauseReason.distraction => 'assets/images/ham_phone.png',
+      PauseReason.rest => 'assets/images/ham_sleep.png',
     };
   }
 }

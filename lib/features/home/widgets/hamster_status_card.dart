@@ -12,6 +12,16 @@ class HamsterStatusCard extends StatelessWidget {
 
   final StudyTimerState timerState;
 
+  String get _imagePath {
+    return switch (timerState.status) {
+      TimerStatus.idle => 'assets/images/ham_pure.png',
+      TimerStatus.studying => 'assets/images/ham_study.png',
+      TimerStatus.paused =>
+        timerState.pauseReason?.imagePath ?? 'assets/images/ham_sleep.png',
+      TimerStatus.finished => 'assets/images/ham_pure.png',
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final statusText = switch (timerState.status) {
@@ -21,19 +31,12 @@ class HamsterStatusCard extends StatelessWidget {
       TimerStatus.finished => '오늘 기록 저장 완료',
     };
 
-    final hamster = switch (timerState.status) {
-      TimerStatus.idle => '🐹',
-      TimerStatus.studying => '🔎🐹📖',
-      TimerStatus.paused => '${timerState.pauseReason?.icon ?? '💤'}🐹',
-      TimerStatus.finished => '🎓🐹',
-    };
-
     return Card(
       child: Padding(
         padding: const EdgeInsets.all(20),
         child: Row(
           children: [
-            Text(hamster, style: const TextStyle(fontSize: 48)),
+            Image.asset(_imagePath, width: 72, height: 72),
             const SizedBox(width: 16),
             Expanded(
               child: Text(

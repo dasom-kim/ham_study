@@ -16,14 +16,6 @@ struct HamStudyAttributes: ActivityAttributes {
     var startTime: Int
 }
 
-@main
-struct HamStudyWidgetBundle: WidgetBundle {
-    var body: some Widget {
-        HamStudyWidgetLiveActivity() // 1. 기존 라이브 액티비티 위젯
-        HamStudyHomeWidget()         // 2. 새로운 홈 화면 위젯
-    }
-}
-
 struct HamStudyWidgetLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: HamStudyAttributes.self) { context in
@@ -134,6 +126,7 @@ struct HamStudyHomeWidget: Widget {
     var body: some WidgetConfiguration {
         StaticConfiguration(kind: kind, provider: HamStudyHomeWidgetProvider()) { entry in
             HamStudyHomeWidgetEntryView(entry: entry)
+                .containerBackground(.background, for: .widget)
         }
         .configurationDisplayName("햄스터디 공부 현황")
         .description("오늘의 총 공부 시간과 과목을 확인하세요.")

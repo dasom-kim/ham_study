@@ -5,9 +5,11 @@
 *.swp
 .DS_Store
 .atom/
+.build/
 .buildlog/
 .history
 .svn/
+.swiftpm/
 migrate_working_dir/
 
 # IntelliJ related
@@ -63,13 +65,21 @@ app.*.map.json
 **/ios/Flutter/app.zip
 **/ios/Flutter/flutter_assets/
 **/ios/Flutter/flutter_export_environment.sh
+**/ios/Flutter/ephemeral/
+**/ios/build/
 **/ios/ServiceDefinitions.json
 **/ios/Pods/
 **/ios/.generated/
-**/macOS/Flutter/GeneratedPluginRegistrant.swift
-**/macOS/Flutter/ephemeral/
-**/macOS/Pods/
-**/macOS/.generated/
+**/macos/Flutter/GeneratedPluginRegistrant.swift
+**/macos/Flutter/ephemeral/
+**/macos/Pods/
+**/macos/.generated/
+**/*.xcworkspace/xcshareddata/swiftpm/
+
+# Android related build outputs
+**/android/build/
+**/android/app/build/
+**/android/.gradle/
 
 # Secrets
 *.jks

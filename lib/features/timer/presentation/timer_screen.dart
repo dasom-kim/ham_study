@@ -1,16 +1,16 @@
 import 'dart:async';
-import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:live_activities/live_activities.dart';
-import 'package:home_widget/home_widget.dart';
+// import 'package:flutter_local_notifications/flutter_local_notifications.dart';  // iOS CocoaPods 호환성 문제로 임시 제거
+// import 'package:live_activities/live_activities.dart';  // iOS CocoaPods 호환성 문제로 임시 제거
+// import 'package:home_widget/home_widget.dart';  // 나중에 사용할 수 있으니 임시 주석 처리
 
 import '../../../app/study_provider.dart';
+import '../../../app/widget_service.dart';
 
 class TimerScreen extends ConsumerStatefulWidget {
   const TimerScreen({super.key});
@@ -33,10 +33,10 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
   int _countdownSeconds = 0; // 기본 0초 (00:00:00)
   int _timerSelectionCount = 0;
 
-  final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
-      FlutterLocalNotificationsPlugin();
-  final LiveActivities _liveActivitiesPlugin = LiveActivities();
-  String? _activityId;
+  // final FlutterLocalNotificationsPlugin _flutterLocalNotificationsPlugin =
+  //     FlutterLocalNotificationsPlugin();  // iOS CocoaPods 호환성 문제로 임시 제거
+  // final LiveActivities _liveActivitiesPlugin = LiveActivities();  // iOS CocoaPods 호환성 문제로 임시 제거
+  // String? _activityId;  // iOS CocoaPods 호환성 문제로 임시 제거
 
   late final AnimationController _breatheController;
   late final Animation<Offset> _breatheAnimation;
@@ -73,104 +73,35 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
     _restoreState(); // 앱 시작 시 강제 종료 전 상태 복구
     _initNotifications();
     _initLiveActivities();
-    _initHomeWidget();
+    // _initHomeWidget();  // 나중에 사용할 수 있으니 임시 주석 처리
   }
 
   void _initLiveActivities() {
-    if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) {
-      _liveActivitiesPlugin.init(appGroupId: 'group.hamstudy');
-    }
+    // iOS CocoaPods 호환성 문제로 임시 제거
   }
 
-  // 홈 위젯을 위한 앱 그룹 초기화
-  void _initHomeWidget() {
-    HomeWidget.setAppGroupId('group.hamstudy');
-  }
-
-  // 홈 위젯에 현재 상태를 전달하고 업데이트를 요청하는 함수
-  Future<void> _updateHomeWidget() async {
+  // 홈 위젯에 현재 공부 상태를 전달하는 함수
+  Future<void> _updateStudyWidget() async {
     final subjects = ref.read(subjectsProvider);
     final activeId = _getActiveId(subjects);
     final currentSubject = subjects.firstWhere((e) => e.id == activeId);
-
-    await HomeWidget.saveWidgetData<String>('widget_subjectName', currentSubject.name);
-    await HomeWidget.saveWidgetData<String>('widget_totalTime', currentSubject.netSeconds.toTimeFormat());
-    
-    // 안드로이드 위젯 색상 변경을 위해 Color 값을 HEX 스트링(#AARRGGBB)으로 변환하여 전달
-    final colorHex = '#${currentSubject.color.value.toRadixString(16).padLeft(8, '0')}';
-    await HomeWidget.saveWidgetData<String>('widget_subjectColor', colorHex);
-
-    await HomeWidget.updateWidget(
-      name: 'HamStudyWidgetProvider', // Android Provider 클래스명
-      iOSName: 'HamStudyHomeWidget',
+    final colorHex =
+        '#${currentSubject.color.toARGB32().toRadixString(16).padLeft(8, '0').substring(2)}';
+    await WidgetService.updateStudyWidget(
+      subjectName: currentSubject.name,
+      totalTime: currentSubject.netSeconds.toTimeFormat(),
+      subjectColor: colorHex,
     );
   }
 
   Future<void> _initNotifications() async {
-    const AndroidInitializationSettings initializationSettingsAndroid =
-        AndroidInitializationSettings('@mipmap/ic_launcher');
-    const DarwinInitializationSettings initializationSettingsDarwin =
-        DarwinInitializationSettings();
-    const InitializationSettings initializationSettings =
-        InitializationSettings(
-      android: initializationSettingsAndroid,
-      iOS: initializationSettingsDarwin,
-    );
-    await _flutterLocalNotificationsPlugin.initialize(initializationSettings);
-
-    // 안드로이드 13 이상 알림 권한 요청
-    _flutterLocalNotificationsPlugin
-        .resolvePlatformSpecificImplementation<
-            AndroidFlutterLocalNotificationsPlugin>()
-        ?.requestNotificationsPermission();
+    // flutter_local_notifications는 iOS CocoaPods 호환성 문제로 임시 제거됨
+    // 나중에 업데이트 후 다시 활성화 가능
   }
 
   Future<void> _updateNotification(bool isPlaying) async {
-    if (!isPlaying) {
-      await _flutterLocalNotificationsPlugin.cancel(0);
-      return;
-    }
-
-    final subjects = ref.read(subjectsProvider);
-    final activeId = _getActiveId(subjects);
-    final currentSubject = subjects.firstWhere((e) => e.id == activeId);
-
-    int when;
-    bool countDown = false;
-
-    if (_isTimerMode && _isCountdownRunning) {
-      // 카운트다운: 현재 시간에 남은 초를 더하여 '종료 시점'을 전달
-      when = DateTime.now().millisecondsSinceEpoch + (_countdownSeconds * 1000);
-      countDown = true;
-    } else {
-      // 스톱워치: 현재 시간에 순 공부 시간을 빼서 '시작 시점'을 전달
-      when = DateTime.now().millisecondsSinceEpoch -
-          (currentSubject.netSeconds * 1000);
-    }
-
-    final AndroidNotificationDetails androidDetails =
-        AndroidNotificationDetails(
-      'timer_channel',
-      '타이머 알림',
-      channelDescription: '백그라운드에서 타이머 시간을 보여줍니다.',
-      importance: Importance.low,
-      priority: Priority.low,
-      ongoing: true,
-      showWhen: true,
-      usesChronometer: true,
-      chronometerCountDown: countDown,
-      when: when,
-      color: currentSubject.color, // 현재 과목의 색상을 알림 UI에 반영
-    );
-    final NotificationDetails platformDetails =
-        NotificationDetails(android: androidDetails);
-
-    await _flutterLocalNotificationsPlugin.show(
-      0,
-      'HamStudy 🐹',
-      '${currentSubject.name} 공부 중...',
-      platformDetails,
-    );
+    // flutter_local_notifications는 iOS CocoaPods 호환성 문제로 임시 제거됨
+    // 나중에 업데이트 후 다시 활성화 가능
   }
 
   // 앱이 강제 종료되었을 때를 대비해 저장해둔 타이머 상태를 복구하는 함수
@@ -319,28 +250,28 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
 
   Widget _buildHamsterCharacter() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    String emoji = '🐹';
+    String imagePath = 'assets/images/ham_pure.png';
     String description = '대기 중';
 
     if (_isStudying) {
-      emoji = '📖🐹';
+      imagePath = 'assets/images/ham_study.png';
       description = '열심히 공부 중!';
     } else {
       switch (_characterState) {
         case '밥':
-          emoji = '🍚🐹';
+          imagePath = 'assets/images/ham_meal.png';
           description = '든든하게 배 채우는 중...';
         case '커피':
-          emoji = '☕️🐹';
+          imagePath = 'assets/images/ham_coffee.png';
           description = '에스프레소 수혈 중...';
         case '화장실':
-          emoji = '🧻🐹';
+          imagePath = 'assets/images/ham_toilet.png';
           description = '안절부절 못하는 중...';
         case '딴짓':
-          emoji = '📱🐹';
+          imagePath = 'assets/images/ham_phone.png';
           description = 'SNS 뒹굴뒹굴...';
         case '휴식':
-          emoji = '💤🐹';
+          imagePath = 'assets/images/ham_sleep.png';
           description = '꿀잠 자는 중...';
       }
     }
@@ -348,7 +279,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(emoji, style: const TextStyle(fontSize: 80)),
+        Image.asset(imagePath, width: 120, height: 120),
         const SizedBox(height: 16),
         Text(
           description,
@@ -364,21 +295,21 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
 
   Widget _buildTimerHamsterCharacter() {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
-    String emoji = '⏱️🐹';
+    String imagePath = 'assets/images/ham_pure.png';
     String description = '타이머 설정 중';
 
     if (_isCountdownRunning) {
-      emoji = '⏳🐹';
+      imagePath = 'assets/images/ham_timer.png';
       description = '타이머 집중 중!';
     } else if (_isCountdownPaused) {
-      emoji = '⏸️🐹';
+      imagePath = 'assets/images/ham_pause.png';
       description = '타이머 일시정지';
     }
 
     return Column(
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        Text(emoji, style: const TextStyle(fontSize: 80)),
+        Image.asset(imagePath, width: 120, height: 120),
         const SizedBox(height: 16),
         Text(
           description,
@@ -418,7 +349,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
       _timer = null;
     }
     _updateNotification(true);
-    _updateHomeWidget(); // 정지 시 위젯 업데이트
+    // _updateHomeWidget(); // 정지 시 위젯 업데이트 (나중에 사용할 수 있으니 임시 주석 처리)
   }
 
   void _pauseTimer(String reason) {
@@ -435,7 +366,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
     _updateNotification(false);
     _stopLiveActivity();
     ref.read(subjectsProvider.notifier).saveCurrentState(); // 일시정지 시 DB 저장
-    _updateHomeWidget(); // 일시정지 시 위젯 업데이트
+    // _updateHomeWidget(); // 일시정지 시 위젯 업데이트 (나중에 사용할 수 있으니 임시 주석 처리)
   }
 
   void _startTimer() {
@@ -467,6 +398,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
     _startPeriodicTimer();
     _updateNotification(true);
     _startLiveActivity();
+    _updateStudyWidget();
   }
 
   void _startPeriodicTimer() {
@@ -474,6 +406,8 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
     _timer ??= Timer.periodic(const Duration(seconds: 1), (timer) {
       if (_isStudying) {
         ref.read(subjectsProvider.notifier).updateTime(_activeSubjectId, 1);
+        // 60초마다 위젯 업데이트
+        if (timer.tick % 60 == 0) _updateStudyWidget();
       }
       if (_isCountdownRunning) {
         setState(() {
@@ -482,7 +416,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
             _setCountdown(0);
             _isCountdownRunning = false;
             _isCountdownPaused = false;
-            _updateNotification(true); // 타이머 0초 도달 시 알림 갱신
+            _updateNotification(true);
           }
         });
       }
@@ -494,34 +428,11 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
   }
 
   Future<void> _startLiveActivity() async {
-    if (kIsWeb || defaultTargetPlatform != TargetPlatform.iOS) return;
-
-    final subjects = ref.read(subjectsProvider);
-    final activeId = _getActiveId(subjects);
-    final currentSubject = subjects.firstWhere((e) => e.id == activeId);
-    final int startTimeMillis = DateTime.now().millisecondsSinceEpoch -
-        (currentSubject.netSeconds * 1000);
-    final int endTimeMillis =
-        DateTime.now().millisecondsSinceEpoch + (_countdownSeconds * 1000);
-
-    _activityId = await _liveActivitiesPlugin.createActivity(
-      {
-        'subjectName': currentSubject.name,
-        'startTime': startTimeMillis, // 누적 시간을 뺀 시작 기준점을 전달하여 iOS가 알아서 카운팅
-        'endTime': endTimeMillis, // 카운트다운을 위한 종료 시점
-        'isTimerMode': _isTimerMode && _isCountdownRunning,
-      },
-    );
+    // iOS CocoaPods 호환성 문제로 임시 제거
   }
 
   Future<void> _stopLiveActivity() async {
-    if (kIsWeb ||
-        defaultTargetPlatform != TargetPlatform.iOS ||
-        _activityId == null) {
-      return;
-    }
-    await _liveActivitiesPlugin.endActivity(_activityId!);
-    _activityId = null;
+    // iOS CocoaPods 호환성 문제로 임시 제거
   }
 
   // 현재 활성화된 과목 ID 반환 (선택된 ID가 지워졌거나 없으면 리스트 첫번째 반환)
@@ -990,7 +901,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              const Text('🐹❓', style: TextStyle(fontSize: 80)),
+              Image.asset('assets/images/ham_pure.png', width: 120, height: 120),
               const SizedBox(height: 24),
               const Text(
                 '아직 등록된 과목이 없어요!',
@@ -1164,70 +1075,6 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                         ),
                       ],
                     ),
-                  ),
-                  Consumer(
-                    builder: (context, ref, child) {
-                      final ddays = ref
-                          .watch(ddaysProvider)
-                          .where((d) => d.isFavorite)
-                          .toList();
-                      if (ddays.isEmpty) return const SizedBox();
-
-                      return Container(
-                        margin: const EdgeInsets.only(
-                            top: 10, bottom: 10, left: 10,),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 12, vertical: 8,),
-                        decoration: BoxDecoration(
-                          color: Theme.of(context)
-                              .cardColor
-                              .withValues(alpha: 0.6),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.end,
-                          children: ddays.map((dday) {
-                            final now = DateTime.now();
-                            final today =
-                                DateTime(now.year, now.month, now.day);
-                            final targetDate = DateTime(
-                                dday.date.year, dday.date.month, dday.date.day,);
-                            final diff = targetDate.difference(today).inDays;
-
-                            String ddayText = '';
-                            if (diff > 0) {
-                              ddayText = 'D-$diff';
-                            } else if (diff == 0) {
-                              ddayText = 'D-Day';
-                            } else {
-                              ddayText = 'D+${-diff}';
-                            }
-
-                            return Padding(
-                              padding: const EdgeInsets.symmetric(vertical: 2),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(dday.title,
-                                      style: TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.bold,
-                                          color: isDarkMode
-                                              ? Colors.white
-                                              : Colors.black87,),),
-                                  const SizedBox(width: 8),
-                                  Text(ddayText,
-                                      style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w900,
-                                          color: Colors.deepOrange,),),
-                                ],
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                      );
-                    },
                   ),
                 ],
               ),
@@ -1453,20 +1300,15 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                                         mainAxisAlignment:
                                             MainAxisAlignment.center,
                                         children: [
-                                          _buildPauseButton(
-                                              '밥', '🍚', Colors.orange,),
+                                          _buildPauseButton('밥', '🍚', Colors.orange),
                                           const SizedBox(width: 16),
-                                          _buildPauseButton(
-                                              '커피', '☕️', Colors.brown,),
+                                          _buildPauseButton('커피', '☕', Colors.brown),
                                           const SizedBox(width: 16),
-                                          _buildPauseButton(
-                                              '화장실', '🧻', Colors.blueGrey,),
+                                          _buildPauseButton('화장실', '🚽', Colors.blueGrey),
                                           const SizedBox(width: 16),
-                                          _buildPauseButton(
-                                              '딴짓', '📱', Colors.purple,),
+                                          _buildPauseButton('딴짓', '📱', Colors.purple),
                                           const SizedBox(width: 16),
-                                          _buildPauseButton(
-                                              '휴식', '💤', Colors.indigo,),
+                                          _buildPauseButton('휴식', '😴', Colors.indigo),
                                         ],
                                       )
                                     : SizedBox(
@@ -1507,7 +1349,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
     );
   }
 
-  Widget _buildPauseButton(String reason, String icon, Color color) {
+  Widget _buildPauseButton(String reason, String emoji, Color color) {
     final isDarkMode = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
       onTap: () => _pauseTimer(reason),
@@ -1528,13 +1370,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
           ],
         ),
         child: Center(
-          child: FittedBox(
-            fit: BoxFit.scaleDown,
-            child: Padding(
-              padding: const EdgeInsets.all(12.0),
-              child: Text(icon, style: const TextStyle(fontSize: 28)),
-            ),
-          ),
+          child: Text(emoji, style: const TextStyle(fontSize: 28)),
         ),
       ),
     );
@@ -1713,7 +1549,7 @@ class _SimpleColorPickerState extends State<_SimpleColorPicker> {
             ],
           ),
           child: Center(
-            child: Text('🐹 색상 미리보기',
+            child: Text('색상 미리보기',
                 style: TextStyle(
                     color: textColor,
                     fontWeight: FontWeight.bold,
@@ -1801,4 +1637,13 @@ class _SimpleColorPickerState extends State<_SimpleColorPicker> {
           trackHeight: 36,
           thumbShape: const RoundSliderThumbShape(enabledThumbRadius: 14),
         ),
-        child: Slider
+        child: Slider(
+          value: value,
+          min: min,
+          max: max,
+          onChanged: onChanged,
+        ),
+      ),
+    );
+  }
+}

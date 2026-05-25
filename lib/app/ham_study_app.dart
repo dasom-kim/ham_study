@@ -7,6 +7,7 @@ import '../features/timer/presentation/settings_screen.dart';
 import '../features/statistics/presentation/statistics_screen.dart';
 import '../features/timer/presentation/timer_screen.dart';
 import 'study_provider.dart';
+import 'widget_service.dart';
 
 class HamStudyApp extends ConsumerWidget {
   const HamStudyApp({super.key});
@@ -35,6 +36,26 @@ class _HamStudyMainScreen extends StatefulWidget {
 
 class _HamStudyMainScreenState extends State<_HamStudyMainScreen> {
   int _currentIndex = 0; // 하단바 탭 인덱스
+
+  @override
+  void initState() {
+    super.initState();
+    _initWidgetNavigation();
+  }
+
+  /// 위젯 클릭으로 앱 진입 시 해당 탭으로 이동
+  Future<void> _initWidgetNavigation() async {
+    // 콜드 스타트: 위젯 클릭으로 앱이 새로 열렸을 때
+    final tab = await WidgetService.getInitialTab();
+    if (tab != null && mounted) {
+      setState(() => _currentIndex = tab);
+    }
+
+    // 핫 스타트: 앱이 이미 실행 중일 때 위젯 클릭
+    WidgetService.listenForNavigation((tab) {
+      if (mounted) setState(() => _currentIndex = tab);
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
