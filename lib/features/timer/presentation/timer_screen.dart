@@ -26,6 +26,8 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
 
   Timer? _timer;
   String? _currentSubjectId;
+  DateTime? _pauseStartTime; // 일시정지 시작 시각
+  String? _pauseReason;      // 일시정지 이유
   DateTime? _backgroundTime;
   bool _isTimerMode = false;
   bool _isCountdownRunning = false;
@@ -358,6 +360,9 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
       _isStudying = false;
       _characterState = reason;
     });
+    // 일시정지 시작 시각 기록
+    _pauseStartTime = DateTime.now();
+    _pauseReason = reason;
     if (!_isCountdownRunning) {
       _timer?.cancel(); // 일시정지 시 타이머 확실히 제거
       _timer = null;
@@ -369,6 +374,18 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
     // _updateHomeWidget(); // 일시정지 시 위젯 업데이트 (나중에 사용할 수 있으니 임시 주석 처리)
   }
 
+  /// 일시정지 시간을 계산해 저장하고 초기화
+  void _flushPauseTime() {
+    if (_pauseStartTime == null || _pauseReason == null) return;
+    final elapsed = DateTime.now().difference(_pauseStartTime!).inSeconds;
+    if (elapsed > 0) {
+      ref.read(dailyPauseStatsProvider.notifier).updateTime(_pauseReason!, elapsed);
+      ref.read(dailyPauseStatsProvider.notifier).saveCurrentState();
+    }
+    _pauseStartTime = null;
+    _pauseReason = null;
+  }
+
   void _startTimer() {
     if (_isTimerMode && _countdownSeconds <= 0) return; // 시간이 0이면 시작 방지
 
@@ -378,6 +395,9 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
         const SnackBar(content: Text('타이머는 최대 12시간까지만 작동합니다.')),
       );
     }
+
+    // 일시정지 상태에서 재개할 때 휴식 시간 저장
+    _flushPauseTime();
 
     HapticFeedback.mediumImpact();
     setState(() {

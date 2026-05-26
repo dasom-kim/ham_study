@@ -40,6 +40,7 @@ class Subject {
   final Color color;
   final int netSeconds;
   final int sortOrder;
+  final bool isDeleted;
 
   const Subject({
     required this.id,
@@ -47,6 +48,7 @@ class Subject {
     required this.color,
     this.netSeconds = 0,
     this.sortOrder = 0,
+    this.isDeleted = false,
   });
 
   Subject copyWith({String? name, Color? color, int? netSeconds, int? sortOrder}) =>
@@ -247,6 +249,63 @@ class DailyStatsNotifier extends Notifier<Map<String, Map<String, int>>> {
 final dailyStatsProvider =
     NotifierProvider<DailyStatsNotifier, Map<String, Map<String, int>>>(
         DailyStatsNotifier.new);
+
+// ─── DailyPauseStats ──────────────────────────────────────────────────────────
+
+class DailyPauseStatsNotifier
+    extends Notifier<Map<String, Map<String, int>>> {
+  @override
+  Map<String, Map<String, int>> build() {
+    _load();
+    return {};
+  }
+
+  static String _todayKey() {
+    final d = DateTime.now();
+    return '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  }
+
+  Future<void> _load() async {
+    final uid = await _getUserId();
+    final snap = await _userCol(uid, 'daily_pause_stats').get();
+    final loaded = <String, Map<String, int>>{};
+    for (final doc in snap.docs) {
+      final raw = doc.data()! as Map<String, dynamic>;
+      loaded[doc.id] = raw.map((k, v) => MapEntry(k, (v as num).toInt()));
+    }
+    state = loaded;
+  }
+
+  void updateTime(String reason, int additionalSeconds) {
+    if (reason.isEmpty) return;
+    final key = _todayKey();
+    final next = Map<String, Map<String, int>>.from(state);
+    final today = Map<String, int>.from(next[key] ?? {});
+    today[reason] = (today[reason] ?? 0) + additionalSeconds;
+    next[key] = today;
+    state = next;
+  }
+
+  Future<void> saveCurrentState() async {
+    final uid = await _getUserId();
+    final batch = _db.batch();
+    for (final entry in state.entries) {
+      final filtered = Map<String, int>.from(entry.value)
+        ..removeWhere((k, v) => k.isEmpty);
+      if (filtered.isNotEmpty) {
+        batch.set(
+          _userCol(uid, 'daily_pause_stats').doc(entry.key),
+          filtered,
+        );
+      }
+    }
+    await batch.commit();
+  }
+}
+
+final dailyPauseStatsProvider =
+    NotifierProvider<DailyPauseStatsNotifier, Map<String, Map<String, int>>>(
+        DailyPauseStatsNotifier.new);
 
 // ─── Dday ────────────────────────────────────────────────────────────────────
 

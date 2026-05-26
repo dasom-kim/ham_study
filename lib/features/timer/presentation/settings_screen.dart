@@ -35,8 +35,10 @@ class SettingsScreen extends ConsumerWidget {
               ListTile(
                 contentPadding: const EdgeInsets.symmetric(horizontal: 20),
                 leading: const Icon(Icons.login),
-                title: const Text('구글 계정으로 동기화하기',
-                    style: TextStyle(fontWeight: FontWeight.bold)),
+                title: const Text(
+                  '구글 계정으로 동기화하기',
+                  style: TextStyle(fontWeight: FontWeight.bold),
+                ),
                 onTap: () =>
                     ref.read(authProvider.notifier).linkGoogleAccount(),
               ),
@@ -58,8 +60,10 @@ class SettingsScreen extends ConsumerWidget {
                   child:
                       user.photoURL == null ? const Icon(Icons.person) : null,
                 ),
-                title: Text(user.displayName ?? user.email ?? '사용자',
-                    style: const TextStyle(fontWeight: FontWeight.bold)),
+                title: Text(
+                  user.displayName ?? user.email ?? '사용자',
+                  style: const TextStyle(fontWeight: FontWeight.bold),
+                ),
                 subtitle: const Text('안전하게 연동되어 있습니다.'),
               ),
               ListTile(
@@ -70,7 +74,8 @@ class SettingsScreen extends ConsumerWidget {
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2))
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : null,
                 onTap: isSyncing
                     ? null
@@ -80,7 +85,8 @@ class SettingsScreen extends ConsumerWidget {
                             .backupToCloud();
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('백업이 완료되었습니다.')));
+                            const SnackBar(content: Text('백업이 완료되었습니다.')),
+                          );
                         }
                       },
               ),
@@ -92,7 +98,8 @@ class SettingsScreen extends ConsumerWidget {
                     ? const SizedBox(
                         width: 20,
                         height: 20,
-                        child: CircularProgressIndicator(strokeWidth: 2))
+                        child: CircularProgressIndicator(strokeWidth: 2),
+                      )
                     : null,
                 onTap: isSyncing
                     ? null
@@ -102,7 +109,8 @@ class SettingsScreen extends ConsumerWidget {
                             .restoreFromCloud();
                         if (context.mounted) {
                           ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(content: Text('복원이 완료되었습니다.')));
+                            const SnackBar(content: Text('복원이 완료되었습니다.')),
+                          );
                         }
                       },
               ),
@@ -116,7 +124,8 @@ class SettingsScreen extends ConsumerWidget {
                     builder: (ctx) => AlertDialog(
                       title: const Text('로그아웃'),
                       content: const Text(
-                          '로그아웃 하시겠습니까?\n로그아웃 후 새로운 연동을 시작할 수 있습니다.'),
+                        '로그아웃 하시겠습니까?\n로그아웃 후 새로운 연동을 시작할 수 있습니다.',
+                      ),
                       actions: [
                         TextButton(
                           onPressed: () => Navigator.pop(ctx),
@@ -127,8 +136,10 @@ class SettingsScreen extends ConsumerWidget {
                             ref.read(authProvider.notifier).signOut();
                             Navigator.pop(ctx);
                           },
-                          child: const Text('로그아웃',
-                              style: TextStyle(color: Colors.red)),
+                          child: const Text(
+                            '로그아웃',
+                            style: TextStyle(color: Colors.red),
+                          ),
                         ),
                       ],
                     ),
@@ -156,8 +167,10 @@ class SettingsScreen extends ConsumerWidget {
                             ref.read(authProvider.notifier).deleteAccount();
                             Navigator.pop(ctx);
                           },
-                          child: const Text('탈퇴',
-                              style: TextStyle(color: Colors.red)),
+                          child: const Text(
+                            '탈퇴',
+                            style: TextStyle(color: Colors.red),
+                          ),
                         ),
                       ],
                     ),

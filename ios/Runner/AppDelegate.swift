@@ -15,23 +15,24 @@ import WidgetKit
     return super.application(application, didFinishLaunchingWithOptions: launchOptions)
   }
 
-  // 위젯 클릭 시 호출 (앱이 꺼져있을 때 or 이미 실행 중일 때)
+  // 위젯 클릭 또는 Google Sign-In 콜백 등 URL open 처리
   override func application(
     _ app: UIApplication,
     open url: URL,
     options: [UIApplication.OpenURLOptionsKey: Any] = [:]
   ) -> Bool {
-    guard url.scheme == "hamstudy", let host = url.host, let tab = Int(host) else {
-      return false
+    // 위젯 딥링크 처리 (hamstudy:// 스킴)
+    if url.scheme == "hamstudy", let host = url.host, let tab = Int(host) {
+      if let ch = widgetChannel {
+        ch.invokeMethod("navigateToTab", arguments: tab)
+      } else {
+        pendingWidgetTab = tab
+      }
+      return true
     }
-    if let ch = widgetChannel {
-      // 앱이 이미 실행 중 → Flutter에 직접 전달
-      ch.invokeMethod("navigateToTab", arguments: tab)
-    } else {
-      // 앱 콜드 스타트 → Flutter 엔진 준비 후 전달
-      pendingWidgetTab = tab
-    }
-    return true
+
+    // Google Sign-In 등 나머지 URL은 super(Firebase/Flutter 플러그인)에 위임
+    return super.application(app, open: url, options: options)
   }
 
   func didInitializeImplicitFlutterEngine(_ engineBridge: FlutterImplicitEngineBridge) {

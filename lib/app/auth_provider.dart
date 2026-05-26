@@ -20,7 +20,7 @@ class AuthNotifier extends Notifier<User?> {
       final userCredential = await FirebaseAuth.instance.signInAnonymously();
       state = userCredential.user;
     } catch (e) {
-      print("익명 로그인 실패: $e");
+      print('익명 로그인 실패: $e');
     }
   }
 
@@ -39,7 +39,7 @@ class AuthNotifier extends Notifier<User?> {
 
       await _linkOrSignIn(credential);
     } catch (e) {
-      print("구글 로그인/연동 실패: $e");
+      print('구글 로그인/연동 실패: $e');
     }
   }
 
@@ -67,9 +67,21 @@ class AuthNotifier extends Notifier<User?> {
   Future<void> _linkOrSignIn(AuthCredential credential) async {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser != null && currentUser.isAnonymous) {
-      // 기존 익명 계정에 구글/애플 인증 정보를 연결 (데이터 유지 핵심 로직)
-      final userCredential = await currentUser.linkWithCredential(credential);
-      state = userCredential.user;
+      try {
+        // 기존 익명 계정에 구글/애플 인증 정보를 연결 (데이터 유지 핵심 로직)
+        final userCredential = await currentUser.linkWithCredential(credential);
+        state = userCredential.user;
+      } on FirebaseAuthException catch (e) {
+        if (e.code == 'credential-already-in-use' ||
+            e.code == 'email-already-in-use') {
+          // 이미 가입/연동된 구글 계정인 경우, 에러 없이 해당 계정으로 바로 로그인 처리
+          final userCredential =
+              await FirebaseAuth.instance.signInWithCredential(credential);
+          state = userCredential.user;
+        } else {
+          rethrow; // 다른 에러는 위로 던져서 catch에서 출력하게 함
+        }
+      }
     } else {
       // 익명 로그인이 아닌 상태이거나 로컬 세션이 없는 경우 일반 로그인 처리
       final userCredential =
@@ -87,7 +99,7 @@ class AuthNotifier extends Notifier<User?> {
       // 로그아웃 후에도 앱을 사용할 수 있도록 바로 새로운 익명 계정 발급
       await signInAnonymously();
     } catch (e) {
-      print("로그아웃 실패: $e");
+      print('로그아웃 실패: $e');
     }
   }
 
@@ -103,7 +115,7 @@ class AuthNotifier extends Notifier<User?> {
         await signInAnonymously();
       }
     } catch (e) {
-      print("계정 삭제 실패: $e");
+      print('계정 삭제 실패: $e');
       // 참고: 보안상 '최근 로그인(requires-recent-login)'이 안 되어 있으면 에러가 날 수 있습니다.
       // 실제 출시할 때는 에러 발생 시 재로그인을 요구하는 로직이 추가로 필요할 수 있습니다.
     }

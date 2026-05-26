@@ -12,7 +12,12 @@
           "package_name": "com.hamstudy.app"
         }
       },
-      "oauth_client": [],
+      "oauth_client": [
+        {
+          "client_id": "994193975375-0dv06o4sqs4feev90a9dtgnu15ut8akj.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
       "api_key": [
         {
           "current_key": "AIzaSyAhAlwPiZIMtFzej6G2imaJxFMaCX-NMiw"
@@ -20,7 +25,19 @@
       ],
       "services": {
         "appinvite_service": {
-          "other_platform_oauth_client": []
+          "other_platform_oauth_client": [
+            {
+              "client_id": "994193975375-0dv06o4sqs4feev90a9dtgnu15ut8akj.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "994193975375-ftdr7ji0siq4j626h2nruqcvi64cq3id.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.hamStudy"
+              }
+            }
+          ]
         }
       }
     }

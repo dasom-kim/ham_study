@@ -16,7 +16,8 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
   DateTime? _rangeStart = DateTime.now();
   DateTime? _rangeEnd = DateTime.now();
 
-  Map<DateTime, Map<String, int>> _dailyStats = {};
+  final Map<DateTime, Map<String, int>> _dailyStats = {};
+  final Map<DateTime, Map<String, int>> _dailyPauseStats = {};
 
   int _getTotalTimeForDate(DateTime date) {
     final dateKey = DateTime(date.year, date.month, date.day);
@@ -30,6 +31,40 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
     final m = (totalSeconds % 3600) ~/ 60;
     if (h > 0) return '${h}h ${m}m';
     return '${m}m';
+  }
+
+  String _getPauseIcon(String reason) {
+    switch (reason) {
+      case '밥':
+        return '🍚';
+      case '커피':
+        return '☕️';
+      case '화장실':
+        return '🧻';
+      case '딴짓':
+        return '📱';
+      case '휴식':
+        return '💤';
+      default:
+        return '⏸️';
+    }
+  }
+
+  Color _getPauseColor(String reason) {
+    switch (reason) {
+      case '밥':
+        return Colors.orange;
+      case '커피':
+        return Colors.brown;
+      case '화장실':
+        return Colors.blueGrey;
+      case '딴짓':
+        return Colors.purple;
+      case '휴식':
+        return Colors.indigo;
+      default:
+        return Colors.grey;
+    }
   }
 
   void _onDateTapped(DateTime date) {
@@ -82,7 +117,10 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
               onPressed: canGoBack
                   ? () => setState(() {
                         _focusedDate = DateTime(
-                            _focusedDate.year, _focusedDate.month - 1, 1);
+                          _focusedDate.year,
+                          _focusedDate.month - 1,
+                          1,
+                        );
                       })
                   : null, // 비활성화 시 자동으로 회색 처리됨
             ),
@@ -95,7 +133,10 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
               onPressed: canGoForward
                   ? () => setState(() {
                         _focusedDate = DateTime(
-                            _focusedDate.year, _focusedDate.month + 1, 1);
+                          _focusedDate.year,
+                          _focusedDate.month + 1,
+                          1,
+                        );
                       })
                   : null,
             ),
@@ -105,9 +146,15 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
         Row(
           mainAxisAlignment: MainAxisAlignment.spaceAround,
           children: ['일', '월', '화', '수', '목', '금', '토']
-              .map((day) => Text(day,
+              .map(
+                (day) => Text(
+                  day,
                   style: const TextStyle(
-                      color: Colors.grey, fontWeight: FontWeight.bold)))
+                    color: Colors.grey,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              )
               .toList(),
         ),
         const SizedBox(height: 12),
@@ -181,12 +228,13 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
                         child: Text(
                           _formatShortTime(totalSeconds),
                           style: TextStyle(
-                              fontSize: 10,
-                              color: Theme.of(context).brightness ==
-                                      Brightness.dark
-                                  ? Colors.grey.shade400
-                                  : Colors.blueGrey,
-                              fontWeight: FontWeight.bold),
+                            fontSize: 10,
+                            color:
+                                Theme.of(context).brightness == Brightness.dark
+                                    ? Colors.grey.shade400
+                                    : Colors.blueGrey,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                       ),
                   ],
@@ -205,12 +253,13 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
     final dateKey =
         DateTime(_rangeStart!.year, _rangeStart!.month, _rangeStart!.day);
     final stats = _dailyStats[dateKey] ?? {};
+    final pauseStats = _dailyPauseStats[dateKey] ?? {};
 
-    if (stats.isEmpty) {
+    if (stats.isEmpty && pauseStats.isEmpty) {
       return const Center(
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: 30),
-          child: Text('이 날은 공부 기록이 없네요!', style: TextStyle(color: Colors.grey)),
+          child: Text('이 날은 기록이 없네요!', style: TextStyle(color: Colors.grey)),
         ),
       );
     }
@@ -218,29 +267,83 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
     return ListView(
       shrinkWrap: true,
       physics: const NeverScrollableScrollPhysics(),
-      children: stats.entries.map((entry) {
-        final subject = subjects.firstWhere(
-          (s) => s.id == entry.key,
-          orElse: () => Subject(id: '', name: '삭제된 과목', color: Colors.grey),
-        );
-        return ListTile(
-          contentPadding: EdgeInsets.zero,
-          leading: Icon(Icons.circle, color: subject.color, size: 16),
-          title: Text(subject.name,
-              style: const TextStyle(fontWeight: FontWeight.bold)),
-          trailing: Text(entry.value.toTimeFormat(),
-              style: const TextStyle(
+      children: [
+        if (stats.isNotEmpty) ...[
+          const Padding(
+            padding: EdgeInsets.only(bottom: 8.0, top: 8.0),
+            child: Text('공부 기록',
+                style:
+                    TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+          ),
+          ...stats.entries.map((entry) {
+            final subject = subjects.firstWhere(
+              (s) => s.id == entry.key,
+              orElse: () => Subject(
+                  id: '', name: '삭제된 과목', color: Colors.grey, isDeleted: true),
+            );
+            final displayColor =
+                subject.isDeleted ? Colors.grey : subject.color;
+            return ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Icon(Icons.circle, color: displayColor, size: 16),
+              title: Text(
+                subject.name,
+                style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    color: subject.isDeleted ? Colors.grey : null),
+              ),
+              trailing: Text(
+                entry.value.toTimeFormat(),
+                style: const TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.bold,
-                  fontFeatures: [FontFeature.tabularFigures()])),
-        );
-      }).toList(),
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
+              ),
+            );
+          }),
+        ],
+        if (pauseStats.isNotEmpty) ...[
+          if (stats.isNotEmpty) const Divider(height: 32),
+          const Padding(
+            padding: EdgeInsets.only(bottom: 8.0),
+            child: Text('일시정지/휴식 기록',
+                style:
+                    TextStyle(fontWeight: FontWeight.bold, color: Colors.grey)),
+          ),
+          ...pauseStats.entries.map((entry) {
+            final reason = entry.key;
+            final icon = _getPauseIcon(reason);
+            final color = _getPauseColor(reason);
+            return ListTile(
+              contentPadding: EdgeInsets.zero,
+              leading: Container(
+                padding: const EdgeInsets.all(6),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Text(icon, style: const TextStyle(fontSize: 16)),
+              ),
+              title: Text(reason,
+                  style: const TextStyle(fontWeight: FontWeight.bold)),
+              trailing: Text(entry.value.toTimeFormat(),
+                  style: const TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      fontFeatures: [FontFeature.tabularFigures()])),
+            );
+          }),
+        ],
+      ],
     );
   }
 
   Widget _buildRangeStats(List<Subject> subjects) {
     final Map<String, int> aggregated = {};
+    final Map<String, int> aggregatedPause = {};
     int totalOverall = 0;
+    int totalPauseOverall = 0;
 
     final start = DateUtils.dateOnly(_rangeStart!);
     final end = DateUtils.dateOnly(_rangeEnd!);
@@ -256,59 +359,111 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
       }
     });
 
+    _dailyPauseStats.forEach((date, dailyData) {
+      final target = DateUtils.dateOnly(date);
+      if ((target.isAtSameMomentAs(start) || target.isAfter(start)) &&
+          (target.isAtSameMomentAs(end) || target.isBefore(end))) {
+        dailyData.forEach((reason, seconds) {
+          aggregatedPause[reason] = (aggregatedPause[reason] ?? 0) + seconds;
+          totalPauseOverall += seconds;
+        });
+      }
+    });
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Theme.of(context).cardColor,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.03),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4)),
-              ],
-            ),
-            child: Column(
-              children: [
-                Text(
-                  '${DateFormat('yyyy.MM.dd').format(start)} ~ ${DateFormat('yyyy.MM.dd').format(end)}',
-                  style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey),
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Theme.of(context).cardColor,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 10,
+                offset: const Offset(0, 4),
+              ),
+            ],
+          ),
+          child: Column(
+            children: [
+              Text(
+                '${DateFormat('yyyy.MM.dd').format(start)} ~ ${DateFormat('yyyy.MM.dd').format(end)}',
+                style: const TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey,
                 ),
-                const SizedBox(height: 12),
-                const Text('총 공부 시간', style: TextStyle(fontSize: 16)),
-                const SizedBox(height: 4),
-                Text(
-                  totalOverall.toTimeFormat(),
-                  style: const TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.w900,
-                      fontFeatures: [FontFeature.tabularFigures()]),
-                ),
-              ],
-            )),
+              ),
+              const SizedBox(height: 24),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                children: [
+                  Column(
+                    children: [
+                      const Text('총 공부 시간',
+                          style: TextStyle(fontSize: 14, color: Colors.grey)),
+                      const SizedBox(height: 8),
+                      Text(
+                        totalOverall.toTimeFormat(),
+                        style: const TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.w900,
+                            fontFeatures: [FontFeature.tabularFigures()]),
+                      ),
+                    ],
+                  ),
+                  if (totalPauseOverall > 0) ...[
+                    Container(
+                        width: 1,
+                        height: 50,
+                        color: Colors.grey.withValues(alpha: 0.2)),
+                    Column(
+                      children: [
+                        const Text('총 휴식 시간',
+                            style: TextStyle(fontSize: 14, color: Colors.grey)),
+                        const SizedBox(height: 8),
+                        Text(
+                          totalPauseOverall.toTimeFormat(),
+                          style: const TextStyle(
+                              fontSize: 28,
+                              fontWeight: FontWeight.w900,
+                              fontFeatures: [FontFeature.tabularFigures()]),
+                        ),
+                      ],
+                    ),
+                  ]
+                ],
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: 32),
-        const Text('과목별 요약',
-            style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+        const Text(
+          '과목별 요약',
+          style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+        ),
         const SizedBox(height: 16),
         if (aggregated.isEmpty)
           const Padding(
             padding: EdgeInsets.all(20),
             child: Center(
-                child: Text('해당 기간에 공부 기록이 없습니다.',
-                    style: TextStyle(color: Colors.grey))),
+              child: Text(
+                '해당 기간에 공부 기록이 없습니다.',
+                style: TextStyle(color: Colors.grey),
+              ),
+            ),
           )
         else
           ...aggregated.entries.map((entry) {
             final subject = subjects.firstWhere(
               (s) => s.id == entry.key,
-              orElse: () => Subject(id: '', name: '삭제된 과목', color: Colors.grey),
+              orElse: () => Subject(
+                  id: '', name: '삭제된 과목', color: Colors.grey, isDeleted: true),
             );
+            final displayColor =
+                subject.isDeleted ? Colors.grey : subject.color;
             return Container(
               margin: const EdgeInsets.only(bottom: 12),
               padding: const EdgeInsets.all(16),
@@ -317,9 +472,10 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
                 borderRadius: BorderRadius.circular(16),
                 boxShadow: [
                   BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.02),
-                      blurRadius: 8,
-                      offset: const Offset(0, 2)),
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
                 ],
               ),
               child: Row(
@@ -327,14 +483,68 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: subject.color.withValues(alpha: 0.1),
+                      color: displayColor.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
-                    child:
-                        Icon(Icons.menu_book, color: subject.color, size: 20),
+                    child: Icon(Icons.menu_book, color: displayColor, size: 20),
                   ),
                   const SizedBox(width: 16),
-                  Text(subject.name,
+                  Text(
+                    subject.name,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: subject.isDeleted ? Colors.grey : null,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    entry.value.toTimeFormat(),
+                    style: const TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      fontFeatures: [FontFeature.tabularFigures()],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }),
+        if (aggregatedPause.isNotEmpty) ...[
+          const SizedBox(height: 24),
+          const Text('휴식/일시정지 요약',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 16),
+          ...aggregatedPause.entries.map((entry) {
+            final reason = entry.key;
+            final icon = _getPauseIcon(reason);
+            final color = _getPauseColor(reason);
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Theme.of(context).cardColor,
+                borderRadius: BorderRadius.circular(16),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.02),
+                    blurRadius: 8,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: color.withValues(alpha: 0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Text(icon, style: const TextStyle(fontSize: 20)),
+                  ),
+                  const SizedBox(width: 16),
+                  Text(reason,
                       style: const TextStyle(
                           fontSize: 16, fontWeight: FontWeight.bold)),
                   const Spacer(),
@@ -349,6 +559,7 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
               ),
             );
           }),
+        ]
       ],
     );
   }
@@ -361,9 +572,10 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-              color: Colors.black.withValues(alpha: 0.03),
-              blurRadius: 10,
-              offset: const Offset(0, 4)),
+            color: Colors.black.withValues(alpha: 0.03),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
         ],
       ),
       child: _buildCalendar(),
@@ -374,7 +586,8 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
         DateUtils.isSameDay(_rangeStart, _rangeEnd);
 
     final Key detailsKey = ValueKey(
-        '${_rangeStart?.toIso8601String()}_${_rangeEnd?.toIso8601String()}');
+      '${_rangeStart?.toIso8601String()}_${_rangeEnd?.toIso8601String()}',
+    );
     Widget detailsWidget;
 
     if (_rangeStart == null || _rangeEnd == null) {
@@ -400,9 +613,10 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
               borderRadius: BorderRadius.circular(20),
               boxShadow: [
                 BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.03),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4)),
+                  color: Colors.black.withValues(alpha: 0.03),
+                  blurRadius: 10,
+                  offset: const Offset(0, 4),
+                ),
               ],
             ),
             child: _buildDailyDetail(subjects),
@@ -430,7 +644,10 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
         );
       },
       child: SizedBox(
-          key: detailsKey, width: double.infinity, child: detailsWidget),
+        key: detailsKey,
+        width: double.infinity,
+        child: detailsWidget,
+      ),
     );
 
     if (isWide) {
@@ -458,14 +675,28 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
   Widget build(BuildContext context) {
     final subjects = ref.watch(subjectsProvider);
     final dailyStatsRaw = ref.watch(dailyStatsProvider);
+    final dailyPauseStatsRaw = ref.watch(dailyPauseStatsProvider);
 
     _dailyStats.clear();
     dailyStatsRaw.forEach((dateStr, data) {
       final parts = dateStr.split('-');
       if (parts.length == 3) {
         final date = DateTime(
-            int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+          int.parse(parts[0]),
+          int.parse(parts[1]),
+          int.parse(parts[2]),
+        );
         _dailyStats[date] = data;
+      }
+    });
+
+    _dailyPauseStats.clear();
+    dailyPauseStatsRaw.forEach((dateStr, data) {
+      final parts = dateStr.split('-');
+      if (parts.length == 3) {
+        final date = DateTime(
+            int.parse(parts[0]), int.parse(parts[1]), int.parse(parts[2]));
+        _dailyPauseStats[date] = data;
       }
     });
 
@@ -487,7 +718,9 @@ class _StatisticsScreenState extends ConsumerState<StatisticsScreen> {
                 Expanded(
                   child: SingleChildScrollView(
                     padding: const EdgeInsets.symmetric(
-                        horizontal: 20, vertical: 10),
+                      horizontal: 20,
+                      vertical: 10,
+                    ),
                     child: _buildCalendarAndDetails(subjects, isWide),
                   ),
                 ),
