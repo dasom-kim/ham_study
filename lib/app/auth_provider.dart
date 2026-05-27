@@ -11,6 +11,12 @@ final authStateProvider = StreamProvider<User?>((ref) {
 class AuthNotifier extends Notifier<User?> {
   @override
   User? build() {
+    // Firebase Auth 상태 변화를 구독하여 상태 동기화 (앱 재시작 시 정보 누락 방지)
+    final sub = FirebaseAuth.instance.authStateChanges().listen((user) {
+      state = user;
+    });
+    ref.onDispose(sub.cancel);
+
     return FirebaseAuth.instance.currentUser;
   }
 
@@ -24,23 +30,24 @@ class AuthNotifier extends Notifier<User?> {
     }
   }
 
-  // 구글 계정 연동 / 로그인
+  // 구글 계정 연동 / 로그인 — 실패 시 예외를 throw해 호출부에서 처리
   Future<void> linkGoogleAccount() async {
-    try {
-      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
-      if (googleUser == null) return;
+    final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+    if (googleUser == null) return; // 사용자가 취소
 
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-      final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
+    final GoogleSignInAuthentication googleAuth =
+        await googleUser.authentication;
 
-      await _linkOrSignIn(credential);
-    } catch (e) {
-      print('구글 로그인/연동 실패: $e');
+    if (googleAuth.idToken == null) {
+      throw Exception('Google ID 토큰을 가져오지 못했습니다. 잠시 후 다시 시도해주세요.');
     }
+
+    final AuthCredential credential = GoogleAuthProvider.credential(
+      accessToken: googleAuth.accessToken,
+      idToken: googleAuth.idToken,
+    );
+
+    await _linkOrSignIn(credential);
   }
 
   // 애플 계정 연동 / 로그인

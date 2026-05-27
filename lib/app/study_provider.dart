@@ -307,6 +307,16 @@ final dailyPauseStatsProvider =
     NotifierProvider<DailyPauseStatsNotifier, Map<String, Map<String, int>>>(
         DailyPauseStatsNotifier.new);
 
+// ─── 오늘 특정 과목의 공부 시간 (타이머 화면 표시용) ──────────────────────────
+
+final todaySubjectSecondsProvider = Provider.family<int, String>((ref, subjectId) {
+  final stats = ref.watch(dailyStatsProvider);
+  final d = DateTime.now();
+  final key =
+      '${d.year}-${d.month.toString().padLeft(2, '0')}-${d.day.toString().padLeft(2, '0')}';
+  return stats[key]?[subjectId] ?? 0;
+});
+
 // ─── Dday ────────────────────────────────────────────────────────────────────
 
 class Dday {
@@ -548,6 +558,35 @@ class DarkModeNotifier extends Notifier<bool> {
 final isDarkModeProvider =
     NotifierProvider<DarkModeNotifier, bool>(DarkModeNotifier.new);
 
+// ─── LastBackupTime ───────────────────────────────────────────────────────────
+
+class LastBackupTimeNotifier extends Notifier<DateTime?> {
+  static const _key = 'lastBackupTime';
+
+  @override
+  DateTime? build() {
+    _load();
+    return null;
+  }
+
+  Future<void> _load() async {
+    final prefs = await SharedPreferences.getInstance();
+    final ms = prefs.getInt(_key);
+    if (ms != null) state = DateTime.fromMillisecondsSinceEpoch(ms);
+  }
+
+  Future<void> setNow() async {
+    final now = DateTime.now();
+    state = now;
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_key, now.millisecondsSinceEpoch);
+  }
+}
+
+final lastBackupTimeProvider =
+    NotifierProvider<LastBackupTimeNotifier, DateTime?>(
+        LastBackupTimeNotifier.new);
+
 // ─── CloudSync ────────────────────────────────────────────────────────────────
 
 class CloudSyncNotifier extends Notifier<bool> {
@@ -559,6 +598,7 @@ class CloudSyncNotifier extends Notifier<bool> {
     state = true;
     try {
       await ref.read(subjectsProvider.notifier).saveCurrentState();
+      await ref.read(lastBackupTimeProvider.notifier).setNow();
     } finally {
       state = false;
     }

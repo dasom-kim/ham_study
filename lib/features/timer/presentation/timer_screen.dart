@@ -1003,6 +1003,8 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                                   final activeId = _getActiveId(subjects);
                                   final currentSubject = subjects
                                       .firstWhere((e) => e.id == activeId);
+                                  final todaySeconds = ref.watch(
+                                      todaySubjectSecondsProvider(activeId));
 
                                   return Container(
                                     padding: const EdgeInsets.symmetric(
@@ -1035,8 +1037,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                                                 BorderRadius.circular(6),
                                           ),
                                           child: Text(
-                                            currentSubject.netSeconds
-                                                .toTimeFormat(),
+                                            todaySeconds.toTimeFormat(),
                                             style: TextStyle(
                                               fontSize: 12,
                                               fontWeight: FontWeight.w900,
@@ -1204,11 +1205,10 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                           flex: 4,
                           child: Consumer(
                             builder: (context, ref, child) {
-                              final netSeconds = ref.watch(
-                                  subjectsProvider.select((s) => s
-                                      .firstWhere(
-                                          (e) => e.id == _getActiveId(s),)
-                                      .netSeconds,),);
+                              final subjects = ref.watch(subjectsProvider);
+                              final activeId = _getActiveId(subjects);
+                              final todaySeconds = ref.watch(
+                                  todaySubjectSecondsProvider(activeId));
                               return FittedBox(
                                 fit: BoxFit.scaleDown,
                                 child: _isTimerMode
@@ -1232,7 +1232,7 @@ class _TimerScreenState extends ConsumerState<TimerScreen>
                                         ],
                                       )
                                     : Text(
-                                        netSeconds.toTimeFormat(),
+                                        todaySeconds.toTimeFormat(),
                                         style: const TextStyle(
                                           fontSize: 80,
                                           fontWeight: FontWeight.w900,

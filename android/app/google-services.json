@@ -14,6 +14,14 @@
       },
       "oauth_client": [
         {
+          "client_id": "994193975375-standhc7ie9uommt52akr4cc6noujt7v.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.hamstudy.app",
+            "certificate_hash": "74a7e7f80c7ea6c70962362d320ae904f2c60078"
+          }
+        },
+        {
           "client_id": "994193975375-0dv06o4sqs4feev90a9dtgnu15ut8akj.apps.googleusercontent.com",
           "client_type": 3
         }
